@@ -1,0 +1,59 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: config3
+  title: config3
+  description: config3 - hello
+  tags:
+    - module
+spec:
+  owner: thirty
+  type: service
+  parameters:
+    title: My file
+    type: object
+    properties:
+      file:
+        title: my_file
+        type: string
+        format: data-url
+      files:
+        type: array
+        title: multiple files
+        items:
+          type: string
+          format: data-url
+
+  # here's the steps that are executed in series in the scaffolder backend
+  steps:
+    - id: fetch-base
+      name: Fetch Base
+      action: fetch:template
+      input:
+        url: https://gitlab.clouda.sebgroup.com/sebbackstage/templates/terraform-module-template/-/tree/main/templates/
+        values:
+          name: ${{ parameters.name }}
+          type: ${{ parameters.type }}
+          owner: ${{ parameters.owner }}
+          description: ${{ parameters.description }}
+          repo_name: ${{ (parameters.repoUrl | parseRepoUrl)["repo"] }}
+          repo_owner: ${{ (parameters.repoUrl | parseRepoUrl)["owner"] }}
+
+    - id: publish
+      name: Publish
+      action: publish:gitlab
+      input:
+        gitAuthorName: ${{ user.entity.metadata.name }}
+        gitAuthorEmail: ${{ user.entity.spec.profile.email }}
+        allowedHosts: ["gitlab.clouda.sebgroup.com"]
+        description: Terraform Module for ${{ parameters.name }}
+        repoUrl: ${{ parameters.repoUrl }}
+        token: ${{ secrets.USER_OAUTH_TOKEN }}
+        defaultBranch: main
+
+    - id: register
+      name: Register
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: '/catalog-info.yaml'
